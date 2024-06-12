@@ -14,7 +14,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    command: server /data
+    command: server --console-address :9001 /data
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
@@ -34,10 +34,13 @@ services:
       minio:
         condition: service_healthy
     entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set minio http://minio:9000 ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY} &&
-      /usr/bin/mc mb minio/mlflow;
-      exit 0;
+      bash -c "
+            mc alias set minio http://minio:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY} &&
+            if mc ls minio/mlflow >/dev/null 2>&1; then
+              echo 'bucket already exists'
+            else
+              mc mb minio/mlflow
+            fi
       "
 
 
