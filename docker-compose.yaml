@@ -3,6 +3,7 @@ version: '3.7'
 services:
   postgres:
     image: postgres:13
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -15,6 +16,7 @@ services:
   minio:
     image: minio/minio:latest
     command: server --console-address :9001 /data
+    restart: unless-stopped
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
@@ -30,6 +32,7 @@ services:
       - miniodata:/data
   minio-create-bucket:
     image: minio/mc
+    restart: unless-stopped
     depends_on:
       minio:
         condition: service_healthy
@@ -49,6 +52,7 @@ services:
     image: mlflow_server
     ports:
       - "5000:5000"
+    restart: unless-stopped
     environment:
       BACKEND_STORE_URI: postgresql://mlflow:mlflow@postgres/mlflow
       ARTIFACT_ROOT: s3://mlflow/
@@ -59,7 +63,43 @@ services:
       - postgres
       - minio
     command: mlflow server --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB} --default-artifact-root s3://mlflow/ --host 0.0.0.0
+  nexus:
+    restart: unless-stopped
+    image: sonatype/nexus3
+    ports:
+      - "8081:8081"
+    volumes:
+      - nexus-data:/nexus-data
+
+  prometheus:
+    container_name: dev_prometheus
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    hostname: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  grafana:
+    container_name: dev_grafana
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    hostname: grafana
+    user: "472"
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/datasource.yml:/etc/grafana/provisioning/datasource.yml
+    env_file:
+      - ./monitoring/config.monitoring
 
 volumes:
   pgdata:
   miniodata:
+  nexus-data:
+
