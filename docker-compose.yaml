@@ -63,6 +63,7 @@ services:
       - postgres
       - minio
     command: mlflow server --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB} --default-artifact-root s3://mlflow/ --host 0.0.0.0
+
   nexus:
     restart: unless-stopped
     image: sonatype/nexus3
@@ -95,8 +96,9 @@ services:
       - "3000:3000"
     volumes:
       - ./monitoring/datasource.yml:/etc/grafana/provisioning/datasource.yml
-    env_file:
-      - ./monitoring/config.monitoring
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=${GF_USERS_ALLOW_SIGN_UP}
 
 volumes:
   pgdata:
